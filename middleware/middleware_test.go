@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fivethirty/go-server-things/logs"
 	"github.com/fivethirty/go-server-things/middleware"
 )
 
@@ -40,7 +41,7 @@ func newTestMiddleware() *testMiddleware {
 		func(w http.ResponseWriter, code int) {
 			tm.ErrorBodyCalled = true
 		},
-		middleware.NewLogger(&tm.logBuffer),
+		logs.New(&tm.logBuffer),
 	)
 	tm.Middleware = m
 	return &tm
@@ -76,7 +77,10 @@ func handler(t *testing.T, status int, responseSize int) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		if responseSize > 0 {
-			w.Write([]byte(strings.Repeat("a", responseSize)))
+			_, err := w.Write([]byte(strings.Repeat("a", responseSize)))
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	})
 }
