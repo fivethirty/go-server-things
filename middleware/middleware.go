@@ -3,23 +3,17 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
-
-	"github.com/google/uuid"
 )
 
 type errorWriter func(w http.ResponseWriter, code int)
 
-type userIDContextKey string
-
 type Middleware struct {
-	userIDContextKey userIDContextKey
-	logger           *slog.Logger
-	writeError       errorWriter
+	logger     *slog.Logger
+	writeError errorWriter
 }
 
 func New(writeErrorBody errorWriter, logger *slog.Logger) *Middleware {
 	return &Middleware{
-		userIDContextKey: userIDContextKey(uuid.NewString()),
 		writeError: func(w http.ResponseWriter, code int) {
 			w.WriteHeader(code)
 			if writeErrorBody != nil {

@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/fivethirty/go-server-things/middleware"
 )
 
 func TestLog(t *testing.T) {
@@ -122,8 +124,8 @@ func TestLogWithUserID(t *testing.T) {
 			wrapped := tm.Log(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				if tt.userID != "" {
-					tm.SetContextUserID(r.Context(), tt.userID)
-					ctxUserID, _ = tm.GetContextUserID(r.Context())
+					middleware.SetUserID(r.Context(), tt.userID)
+					ctxUserID, _ = middleware.GetUserID(r.Context())
 				}
 			}))
 			req := httptest.NewRequest(http.MethodPost, "/", nil)

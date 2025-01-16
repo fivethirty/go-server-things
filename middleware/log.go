@@ -12,6 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type contextKey string
+
+var userIDContextKey contextKey = "user_id"
+
 func (m *Middleware) Log(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -27,7 +31,7 @@ func (m *Middleware) Log(next http.Handler) http.Handler {
 		ctx = logs.AppendCtx(ctx, slog.String("request_id", uuid.NewString()))
 
 		userID := ""
-		ctx = context.WithValue(ctx, m.userIDContextKey, &userID)
+		ctx = context.WithValue(ctx, userIDContextKey, &userID)
 		ctx = logs.AppendCtx(ctx, slog.Any("user_id", &userID))
 
 		r = r.WithContext(ctx)
@@ -49,8 +53,8 @@ func (m *Middleware) Log(next http.Handler) http.Handler {
 	})
 }
 
-func (m *Middleware) SetContextUserID(ctx context.Context, userID string) error {
-	ptr, err := m.userIDPtr(ctx)
+func SetUserID(ctx context.Context, userID string) error {
+	ptr, err := userIDPtr(ctx)
 	if err != nil {
 		return fmt.Errorf("SetContextUserID: %w", err)
 	}
@@ -58,16 +62,16 @@ func (m *Middleware) SetContextUserID(ctx context.Context, userID string) error 
 	return nil
 }
 
-func (m *Middleware) GetContextUserID(ctx context.Context) (string, error) {
-	ptr, err := m.userIDPtr(ctx)
+func GetUserID(ctx context.Context) (string, error) {
+	ptr, err := userIDPtr(ctx)
 	if err != nil || *ptr == "" {
 		return "", fmt.Errorf("GetContextUserID: no user id in context %w", err)
 	}
 	return *ptr, nil
 }
 
-func (m *Middleware) userIDPtr(ctx context.Context) (*string, error) {
-	ptr, ok := ctx.Value(m.userIDContextKey).(*string)
+func userIDPtr(ctx context.Context) (*string, error) {
+	ptr, ok := ctx.Value(userIDContextKey).(*string)
 	if !ok || ptr == nil {
 		return nil, errors.New("unexpected nil pointer")
 	}
