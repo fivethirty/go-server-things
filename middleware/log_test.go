@@ -124,8 +124,14 @@ func TestLogWithUserID(t *testing.T) {
 			wrapped := tm.Log(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				if tt.userID != "" {
-					middleware.SetUserID(r.Context(), tt.userID)
-					ctxUserID, _ = middleware.GetUserID(r.Context())
+					err := middleware.SetUserID(r.Context(), tt.userID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					ctxUserID, err = middleware.UserID(r.Context())
+					if err != nil {
+						t.Fatal(err)
+					}
 				}
 			}))
 			req := httptest.NewRequest(http.MethodPost, "/", nil)

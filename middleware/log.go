@@ -62,7 +62,7 @@ func SetUserID(ctx context.Context, userID string) error {
 	return nil
 }
 
-func GetUserID(ctx context.Context) (string, error) {
+func UserID(ctx context.Context) (string, error) {
 	ptr, err := userIDPtr(ctx)
 	if err != nil || *ptr == "" {
 		return "", fmt.Errorf("GetContextUserID: no user id in context %w", err)
