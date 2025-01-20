@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fivethirty/go-server-things/logs"
 	"github.com/fivethirty/go-server-things/middleware"
 )
 
@@ -40,7 +41,7 @@ func newTestMiddleware() *testMiddleware {
 		func(w http.ResponseWriter, code int) {
 			tm.ErrorBodyCalled = true
 		},
-		middleware.NewLogger(&tm.logBuffer),
+		logs.New(&tm.logBuffer),
 	)
 	tm.Middleware = m
 	return &tm
