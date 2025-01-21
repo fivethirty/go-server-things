@@ -75,7 +75,7 @@ func TestRequestSize(t *testing.T) {
 			}
 
 			if ok && tt.isBodyReadable {
-				t.Errorf("expected request body to be readable but got error: %v", err)
+				t.Errorf("expected request body to be readable but got error: %+v", err)
 			} else if err == nil && !tt.isBodyReadable {
 				t.Errorf("expected request body to be unreadable")
 			}
