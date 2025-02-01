@@ -18,6 +18,7 @@ var ErrDecoding error = errors.New("can't decode")
 var ErrValidating error = errors.New("can't validate")
 
 func JSON(body io.ReadCloser, target any) error {
+	defer body.Close()
 	decoder := json.NewDecoder(body)
 
 	err := decoder.Decode(target)
