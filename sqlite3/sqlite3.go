@@ -157,7 +157,7 @@ func (*SQLite3) doCopy(conn, copyConn *sql.Conn) (*os.File, error) {
 
 			copySQLiteConn, ok := rawCopyConn.(*driver.SQLiteConn)
 			if !ok {
-				return fmt.Errorf("error when casting source raw connection to sqlite connection")
+				return fmt.Errorf("error when casting copy raw connection to sqlite connection")
 			}
 
 			backup, err := copySQLiteConn.Backup("main", sqliteConn, "main")
@@ -176,7 +176,7 @@ func (*SQLite3) doCopy(conn, copyConn *sql.Conn) (*os.File, error) {
 			filename := copySQLiteConn.GetFilename("")
 
 			logger.Info(
-				"SQLite dump complete.",
+				"SQLite copy complete.",
 				"to", filename,
 			)
 

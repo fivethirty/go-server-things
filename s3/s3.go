@@ -16,13 +16,17 @@ var logger = logs.Default
 
 type S3 struct {
 	config Config
-	client *s3.Client
+	client client
 }
 
 type Config struct {
 	InstanceID string
 	Region     string
 	S3Bucket   string
+}
+
+type client interface {
+	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
 
 func New(
@@ -37,6 +41,16 @@ func New(
 		config: config,
 		client: s3.NewFromConfig(cfg),
 	}, nil
+}
+
+func NewWithClient(
+	config Config,
+	client client,
+) *S3 {
+	return &S3{
+		config: config,
+		client: client,
+	}
 }
 
 func (s *S3) Upload(ctx context.Context, file *os.File) error {
