@@ -2,6 +2,7 @@ package s3
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -41,7 +42,7 @@ func New(
 func (s *S3) Upload(ctx context.Context, file *os.File) error {
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.config.S3Bucket),
-		Key:    aws.String(s.config.InstanceID),
+		Key:    aws.String(fmt.Sprintf("%s/%s", s.config.InstanceID, file.Name())),
 		Body:   file,
 	})
 	if err != nil {
