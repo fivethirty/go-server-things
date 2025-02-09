@@ -40,9 +40,10 @@ func New(
 }
 
 func (s *S3) Upload(ctx context.Context, file *os.File) error {
+	key := fmt.Sprintf("%s/%s", s.config.InstanceID, filepath.Base(file.Name()))
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(s.config.S3Bucket),
-		Key:    aws.String(fmt.Sprintf("%s/%s", s.config.InstanceID, file.Name())),
+		Key:    aws.String(key),
 		Body:   file,
 	})
 	if err != nil {
@@ -58,7 +59,7 @@ func (s *S3) Upload(ctx context.Context, file *os.File) error {
 		"Backed up",
 		"file", path,
 		"bucket", s.config.S3Bucket,
-		"key", s.config.InstanceID,
+		"key", key,
 	)
 	return nil
 }
