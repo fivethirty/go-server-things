@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/fs"
-	"log"
 	"log/slog"
 	"os"
 	"strings"
@@ -13,23 +11,22 @@ import (
 	"github.com/fivethirty/go-server-things/logs"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/golang-migrate/migrate/v4/source"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 	driver "github.com/mattn/go-sqlite3"
 )
 
 const (
-	InMemory = ":memory:"
-	Driver   = "sqlite3"
+	InMemory   = ":memory:"
+	DriverName = "sqlite3"
 )
 
 type Config struct {
 	Dir        string
 	DB         string
 	Options    string
-	Migrations fs.FS
-	Upload     func(context.Context, *os.File) error
+	Migrations source.Driver
 }
 
 func (c *Config) Connection() string {
@@ -59,7 +56,7 @@ func New(ctx context.Context, config Config) (*SQLite3, error) {
 		}
 	}
 
-	db, err := sqlx.Open(Driver, conn)
+	db, err := sqlx.Open(DriverName, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -94,12 +91,7 @@ func (s *SQLite3) Migrate() error {
 		return err
 	}
 
-	dir, err := iofs.New(s.config.Migrations, "testmigrations")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	m, err := migrate.NewWithInstance("iofs", dir, "sqlite3", driver)
+	m, err := migrate.NewWithInstance("iofs", s.config.Migrations, DriverName, driver)
 
 	if err != nil {
 		return err
@@ -123,25 +115,7 @@ func (s *SQLite3) Close() error {
 	return s.DB.Close()
 }
 
-func (s *SQLite3) Backup(ctx context.Context, dir string, name string) error {
-	file, err := s.copy(ctx, dir, name)
-	if err != nil {
-		return fmt.Errorf("Backup: %w", err)
-	}
-
-	if s.config.Upload == nil {
-		logger.Info("No upload function configured, skipping remote database backup.")
-		return nil
-	}
-
-	err = s.config.Upload(ctx, file)
-	if err != nil {
-		return fmt.Errorf("Backup: %w", err)
-	}
-	return nil
-}
-
-func (s *SQLite3) copy(ctx context.Context, dir string, name string) (*os.File, error) {
+func (s *SQLite3) Copy(ctx context.Context, dir string, name string) (*os.File, error) {
 	connStr := fmt.Sprintf(
 		"%s%s",
 		dir,
@@ -152,7 +126,7 @@ func (s *SQLite3) copy(ctx context.Context, dir string, name string) (*os.File, 
 		"from", strings.Split(s.config.Connection(), "?")[0],
 		"to", connStr,
 	)
-	copy, err := sqlx.Open(Driver, connStr)
+	copy, err := sqlx.Open(DriverName, connStr)
 	if err != nil {
 		return nil, err
 	}
