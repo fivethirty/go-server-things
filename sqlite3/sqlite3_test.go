@@ -5,9 +5,11 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/fivethirty/go-server-things/sqlite3"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
@@ -81,22 +83,10 @@ func TestSQLite3(t *testing.T) {
 			doUpload: false,
 		},
 		{
-			name:     "should create, backup, and upload in memory database",
-			dir:      sqlite3.InMemory,
-			db:       "test.db",
-			doUpload: true,
-		},
-		{
 			name:     "should create and backup filesystem database",
 			dir:      fmt.Sprintf("/tmp/%s/", uuid.New()),
 			db:       "test.db",
 			doUpload: false,
-		},
-		{
-			name:     "should create, backup, and upload filesystem database",
-			dir:      fmt.Sprintf("/tmp/%s/", uuid.New()),
-			db:       "test.db",
-			doUpload: true,
 		},
 	}
 
@@ -108,20 +98,16 @@ func TestSQLite3(t *testing.T) {
 			})
 			ctx := context.Background()
 
+			dir, err := iofs.New(migrations, "testmigrations")
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			config := sqlite3.Config{
 				Dir:        tt.dir,
 				DB:         tt.db,
 				Options:    tt.options,
-				Migrations: migrations,
-			}
-
-			uploaded := false
-
-			if tt.doUpload {
-				config.Upload = func(context.Context, *os.File) error {
-					uploaded = true
-					return nil
-				}
+				Migrations: dir,
 			}
 
 			db, err := sqlite3.New(ctx, config)
@@ -134,13 +120,6 @@ func TestSQLite3(t *testing.T) {
 
 			testMigrations(t, ctx, db)
 			testBackup(t, ctx, db)
-
-			if tt.doUpload && !uploaded {
-				t.Fatal("Expected upload to be called but it was not")
-			}
-			if !tt.doUpload && uploaded {
-				t.Fatal("Expected upload to not be called but it was")
-			}
 		})
 	}
 }
@@ -165,19 +144,28 @@ func testBackup(t *testing.T, ctx context.Context, s *sqlite3.SQLite3) {
 		t.Fatal(err)
 	}
 
-	if err := s.Backup(ctx, dir, "backup.db"); err != nil {
-		t.Fatal(err)
-	}
-
-	dumpDB, err := sqlx.Open("sqlite3", fmt.Sprintf("%s/backup.db", dir))
+	copied, err := s.Copy(ctx, dir, "backup.db")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		dumpDB.Close()
+		copied.Close()
 	})
 
-	testRow(t, ctx, dumpDB)
+	path, err := filepath.Abs(copied.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	copiedDB, err := sqlx.Open("sqlite3", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		copiedDB.Close()
+	})
+
+	testRow(t, ctx, copiedDB)
 }
 
 func testRow(t *testing.T, ctx context.Context, db *sqlx.DB) {
