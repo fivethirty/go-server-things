@@ -11,7 +11,9 @@ import (
 	"github.com/fivethirty/go-server-things/logs"
 )
 
-type Backup struct {
+var logger = logs.Default
+
+type S3 struct {
 	config Config
 	client *s3.Client
 }
@@ -25,23 +27,21 @@ type Config struct {
 func New(
 	ctx context.Context,
 	config Config,
-) (*Backup, error) {
+) (*S3, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(config.Region))
 	if err != nil {
 		return nil, err
 	}
-	return &Backup{
+	return &S3{
 		config: config,
 		client: s3.NewFromConfig(cfg),
 	}, nil
 }
 
-var logger = logs.Default
-
-func (b *Backup) Upload(ctx context.Context, file *os.File) error {
-	_, err := b.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(b.config.S3Bucket),
-		Key:    aws.String(b.config.InstanceID),
+func (s *S3) Upload(ctx context.Context, file *os.File) error {
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(s.config.S3Bucket),
+		Key:    aws.String(s.config.InstanceID),
 		Body:   file,
 	})
 	if err != nil {
@@ -56,8 +56,8 @@ func (b *Backup) Upload(ctx context.Context, file *os.File) error {
 	logger.Info(
 		"Backed up",
 		"file", path,
-		"bucket", b.config.S3Bucket,
-		"key", b.config.InstanceID,
+		"bucket", s.config.S3Bucket,
+		"key", s.config.InstanceID,
 	)
 	return nil
 }
