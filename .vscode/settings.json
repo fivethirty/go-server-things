@@ -1,0 +1,17 @@
+{
+	"go.lintTool": "golangci-lint",
+	"go.formatTool": "gofumpt",
+	"gopls": { "ui.semanticTokens": true },
+	"[go]": {
+		"editor.tabSize": 4,
+		"editor.defaultFormatter": "golang.go"
+	},
+	"files.associations": {
+		"*.html.tmpl": "html",
+		".parcelrc": "json",
+		".proxyrc": "json"
+	},
+	"[html]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	}
+}
