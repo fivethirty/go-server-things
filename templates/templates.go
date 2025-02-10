@@ -2,6 +2,7 @@ package templates
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -23,7 +24,7 @@ type executor interface {
 
 type Templates struct {
 	config    Config
-	executors map[string]executor
+	executors sync.Map
 	buffers   sync.Pool
 }
 
@@ -33,7 +34,7 @@ func New(config Config) (*Templates, error) {
 	}
 	return &Templates{
 		config:    config,
-		executors: map[string]executor{},
+		executors: sync.Map{},
 		buffers: sync.Pool{
 			New: func() any {
 				return &bytes.Buffer{}
@@ -64,17 +65,22 @@ func (t *Templates) execute(
 	template string,
 	data any,
 ) error {
-	exectuor := t.executors[glob]
-	if exectuor == nil {
+	value, _ := t.executors.Load(glob)
+	if value == nil {
 		e, err := t.newExecutor(glob)
 		if err != nil {
 			return err
 		}
-		exectuor = e
-		t.executors[glob] = e
+		value = e
+		t.executors.Store(glob, value)
 	}
 
-	return exectuor.ExecuteTemplate(buffer, template, data)
+	executor, ok := value.(executor)
+	if !ok {
+		return fmt.Errorf("invalid executor type: %T", value)
+	}
+
+	return executor.ExecuteTemplate(buffer, template, data)
 }
 
 func (t *Templates) newExecutor(patterns ...string) (executor, error) {
