@@ -2,6 +2,7 @@ package sqlite3_test
 
 import (
 	"context"
+	"database/sql"
 	"embed"
 	"fmt"
 	"os"
@@ -9,9 +10,7 @@ import (
 	"testing"
 
 	"github.com/fivethirty/go-server-things/sqlite3"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 //go:embed testmigrations/*.sql
@@ -98,16 +97,12 @@ func TestSQLite3(t *testing.T) {
 			})
 			ctx := context.Background()
 
-			dir, err := iofs.New(migrations, "testmigrations")
-			if err != nil {
-				t.Fatal(err)
-			}
-
 			config := sqlite3.Config{
-				Dir:        tt.dir,
-				DB:         tt.db,
-				Options:    tt.options,
-				Migrations: dir,
+				Dir:           tt.dir,
+				DB:            tt.db,
+				Options:       tt.options,
+				MigrationsFS:  migrations,
+				MigrationsDir: "testmigrations",
 			}
 
 			db, err := sqlite3.New(ctx, config)
@@ -157,7 +152,7 @@ func testBackup(t *testing.T, ctx context.Context, s *sqlite3.SQLite3) {
 		t.Fatal(err)
 	}
 
-	copiedDB, err := sqlx.Open("sqlite3", path)
+	copiedDB, err := sql.Open("sqlite3", path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,12 +163,12 @@ func testBackup(t *testing.T, ctx context.Context, s *sqlite3.SQLite3) {
 	testRow(t, ctx, copiedDB)
 }
 
-func testRow(t *testing.T, ctx context.Context, db *sqlx.DB) {
+func testRow(t *testing.T, ctx context.Context, db *sql.DB) {
 	t.Helper()
 
 	var text string
-	err := db.GetContext(ctx, &text, "SELECT text FROM test WHERE id = 1;")
-	if err != nil {
+	row := db.QueryRowContext(ctx, "SELECT text FROM test WHERE id = 1;")
+	if err := row.Scan(&text); err != nil {
 		t.Fatal(err)
 	}
 

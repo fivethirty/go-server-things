@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"strings"
@@ -11,9 +12,8 @@ import (
 	"github.com/fivethirty/go-server-things/logs"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
-	"github.com/golang-migrate/migrate/v4/source"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jmoiron/sqlx"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	driver "github.com/mattn/go-sqlite3"
 )
 
@@ -23,10 +23,11 @@ const (
 )
 
 type Config struct {
-	Dir        string
-	DB         string
-	Options    string
-	Migrations source.Driver
+	Dir           string
+	DB            string
+	Options       string
+	MigrationsFS  fs.FS
+	MigrationsDir string
 }
 
 func (c *Config) Connection() string {
@@ -37,7 +38,7 @@ func (c *Config) Connection() string {
 }
 
 type SQLite3 struct {
-	DB     *sqlx.DB
+	DB     *sql.DB
 	config *Config
 }
 
@@ -56,7 +57,7 @@ func New(ctx context.Context, config Config) (*SQLite3, error) {
 		}
 	}
 
-	db, err := sqlx.Open(DriverName, conn)
+	db, err := sql.Open(DriverName, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +87,17 @@ func (ml *migrateLogger) Printf(format string, v ...any) {
 }
 
 func (s *SQLite3) Migrate() error {
-	driver, err := sqlite3.WithInstance(s.DB.DB, &sqlite3.Config{})
+	driver, err := sqlite3.WithInstance(s.DB, &sqlite3.Config{})
 	if err != nil {
 		return err
 	}
 
-	m, err := migrate.NewWithInstance("iofs", s.config.Migrations, DriverName, driver)
+	migrations, err := iofs.New(s.config.MigrationsFS, s.config.MigrationsDir)
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithInstance("iofs", migrations, DriverName, driver)
 
 	if err != nil {
 		return err
@@ -126,7 +132,7 @@ func (s *SQLite3) Copy(ctx context.Context, dir string, name string) (*os.File, 
 		"from", strings.Split(s.config.Connection(), "?")[0],
 		"to", connStr,
 	)
-	copy, err := sqlx.Open(DriverName, connStr)
+	copy, err := sql.Open(DriverName, connStr)
 	if err != nil {
 		return nil, err
 	}
