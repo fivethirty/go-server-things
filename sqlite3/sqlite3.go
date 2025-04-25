@@ -27,7 +27,6 @@ type Config struct {
 	Options       string
 	MigrationsFS  fs.FS
 	MigrationsDir string
-	Logger        *slog.Logger
 }
 
 func (c *Config) Connection() string {
@@ -40,11 +39,12 @@ func (c *Config) Connection() string {
 type SQLite3 struct {
 	DB     *sql.DB
 	config *Config
+	logger *slog.Logger
 }
 
-func New(ctx context.Context, config Config) (*SQLite3, error) {
+func New(ctx context.Context, logger *slog.Logger, config Config) (*SQLite3, error) {
 	conn := config.Connection()
-	config.Logger.Info(
+	logger.Info(
 		"Connecting to SQLite",
 		"db", conn,
 	)
@@ -69,6 +69,7 @@ func New(ctx context.Context, config Config) (*SQLite3, error) {
 	return &SQLite3{
 		DB:     db,
 		config: &config,
+		logger: logger,
 	}, nil
 }
 
@@ -101,7 +102,7 @@ func (s *SQLite3) Migrate() error {
 		return err
 	}
 
-	logger := s.config.Logger
+	logger := s.logger
 
 	m.Log = &migrateLogger{
 		logger: logger,
@@ -127,7 +128,7 @@ func (s *SQLite3) Copy(ctx context.Context, dir string, name string) (*os.File, 
 		dir,
 		name,
 	)
-	s.config.Logger.Info(
+	s.logger.Info(
 		"Copying SQLite",
 		"from", strings.Split(s.config.Connection(), "?")[0],
 		"to", connStr,
@@ -181,7 +182,7 @@ func (s *SQLite3) doCopy(conn, copyConn *sql.Conn) (*os.File, error) {
 
 			filename := copySQLiteConn.GetFilename("")
 
-			s.config.Logger.Info(
+			s.logger.Info(
 				"SQLite copy complete.",
 				"to", filename,
 			)

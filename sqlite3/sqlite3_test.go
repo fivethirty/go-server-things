@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -105,7 +106,7 @@ func TestSQLite3(t *testing.T) {
 				MigrationsDir: "testmigrations",
 			}
 
-			db, err := sqlite3.New(ctx, config)
+			db, err := sqlite3.New(ctx, slog.Default(), config)
 			if err != nil {
 				t.Fatal(err)
 			}

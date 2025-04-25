@@ -3,6 +3,7 @@ package s3_test
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,6 +84,7 @@ func TestUpload(t *testing.T) {
 					S3Bucket:   tt.bucket,
 				},
 				&tc,
+				slog.Default(),
 			)
 
 			file := tt.file(t)

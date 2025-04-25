@@ -15,13 +15,13 @@ import (
 type S3 struct {
 	config Config
 	client client
+	logger *slog.Logger
 }
 
 type Config struct {
 	InstanceID string
 	Region     string
 	S3Bucket   string
-	Logger     *slog.Logger
 }
 
 type client interface {
@@ -30,6 +30,7 @@ type client interface {
 
 func New(
 	ctx context.Context,
+	logger *slog.Logger,
 	config Config,
 ) (*S3, error) {
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(config.Region))
@@ -39,16 +40,19 @@ func New(
 	return &S3{
 		config: config,
 		client: s3.NewFromConfig(cfg),
+		logger: logger,
 	}, nil
 }
 
 func NewWithClient(
 	config Config,
 	client client,
+	logger *slog.Logger,
 ) *S3 {
 	return &S3{
 		config: config,
 		client: client,
+		logger: logger,
 	}
 }
 
@@ -68,7 +72,7 @@ func (s *S3) Upload(ctx context.Context, file *os.File) error {
 		return err
 	}
 
-	s.config.Logger.Info(
+	s.logger.Info(
 		"Backed up",
 		"file", path,
 		"bucket", s.config.S3Bucket,
