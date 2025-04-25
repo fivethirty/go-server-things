@@ -3,16 +3,14 @@ package s3
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/fivethirty/go-server-things/logs"
 )
-
-var logger = logs.Default
 
 type S3 struct {
 	config Config
@@ -23,6 +21,7 @@ type Config struct {
 	InstanceID string
 	Region     string
 	S3Bucket   string
+	Logger     *slog.Logger
 }
 
 type client interface {
@@ -69,7 +68,7 @@ func (s *S3) Upload(ctx context.Context, file *os.File) error {
 		return err
 	}
 
-	logger.Info(
+	s.config.Logger.Info(
 		"Backed up",
 		"file", path,
 		"bucket", s.config.S3Bucket,

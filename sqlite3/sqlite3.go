@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fivethirty/go-server-things/logs"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -28,6 +27,7 @@ type Config struct {
 	Options       string
 	MigrationsFS  fs.FS
 	MigrationsDir string
+	Logger        *slog.Logger
 }
 
 func (c *Config) Connection() string {
@@ -42,11 +42,9 @@ type SQLite3 struct {
 	config *Config
 }
 
-var logger *slog.Logger = logs.Default
-
 func New(ctx context.Context, config Config) (*SQLite3, error) {
 	conn := config.Connection()
-	logger.Info(
+	config.Logger.Info(
 		"Connecting to SQLite",
 		"db", conn,
 	)
@@ -103,6 +101,8 @@ func (s *SQLite3) Migrate() error {
 		return err
 	}
 
+	logger := s.config.Logger
+
 	m.Log = &migrateLogger{
 		logger: logger,
 	}
@@ -127,7 +127,7 @@ func (s *SQLite3) Copy(ctx context.Context, dir string, name string) (*os.File, 
 		dir,
 		name,
 	)
-	logger.Info(
+	s.config.Logger.Info(
 		"Copying SQLite",
 		"from", strings.Split(s.config.Connection(), "?")[0],
 		"to", connStr,
@@ -152,7 +152,7 @@ func (s *SQLite3) Copy(ctx context.Context, dir string, name string) (*os.File, 
 	return s.doCopy(conn, copyConn)
 }
 
-func (*SQLite3) doCopy(conn, copyConn *sql.Conn) (*os.File, error) {
+func (s *SQLite3) doCopy(conn, copyConn *sql.Conn) (*os.File, error) {
 	var file *os.File
 	return file, conn.Raw(func(rawConn any) error {
 		return copyConn.Raw(func(rawCopyConn any) error {
@@ -181,7 +181,7 @@ func (*SQLite3) doCopy(conn, copyConn *sql.Conn) (*os.File, error) {
 
 			filename := copySQLiteConn.GetFilename("")
 
-			logger.Info(
+			s.config.Logger.Info(
 				"SQLite copy complete.",
 				"to", filename,
 			)
